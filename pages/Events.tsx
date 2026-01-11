@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MOCK_EVENTS } from '../mockData';
+import { useAuth } from '../context/AuthContext';
 import { Event } from '../types';
 import { Calendar, MapPin, Users, Plus, Edit2, Trash2, X, Save, Clock } from 'lucide-react';
 
@@ -177,7 +177,7 @@ const EventModal = ({
 };
 
 const Events = () => {
-  const [events, setEvents] = useState<Event[]>(MOCK_EVENTS);
+  const { events, addEvent, updateEvent, deleteEvent } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | undefined>(undefined);
 
@@ -193,14 +193,14 @@ const Events = () => {
 
   const handleDelete = (id: string) => {
     if (window.confirm('Вы уверены, что хотите удалить это мероприятие?')) {
-        setEvents(events.filter(e => e.id !== id));
+        deleteEvent(id);
     }
   };
 
   const handleSave = (eventData: Partial<Event>) => {
     if (eventData.id) {
         // Edit
-        setEvents(events.map(e => e.id === eventData.id ? { ...e, ...eventData } as Event : e));
+        updateEvent(eventData.id, eventData);
     } else {
         // Create
         const newEvent: Event = {
@@ -208,7 +208,7 @@ const Events = () => {
             id: Math.random().toString(36).substr(2, 9),
             registeredCount: 0
         };
-        setEvents([...events, newEvent]);
+        addEvent(newEvent);
     }
     setIsModalOpen(false);
   };

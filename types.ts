@@ -13,6 +13,8 @@ export interface User {
   avatarUrl?: string;
   isVerified?: boolean; // Admin verification status
   isEmailVerified?: boolean; // Email confirmation status
+  telegramId?: string;
+  password?: string; // Added field for auth simulation
 }
 
 export enum ItemCategory {
@@ -56,6 +58,9 @@ export interface InventoryItem {
   location: string;
   status: ItemStatus;
   responsibleId?: string;
+  
+  // New Field Added Here
+  description?: string; 
   
   // Tech details
   batteryLevel?: 'Full' | 'Low' | 'Empty' | 'Missing';
@@ -108,7 +113,10 @@ export interface Booking {
   startTime: string;
   endTime: string;
   status: BookingStatus;
-  clientInfo?: ClientInfo; // Added client details
+  clientInfo?: ClientInfo; 
+  
+  // New Field Added Here
+  comment?: string;
 }
 
 export enum RequestStatus {

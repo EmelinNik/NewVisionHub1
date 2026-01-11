@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { MOCK_WISHLIST } from '../mockData';
 import { WishlistItem, Comment } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { ThumbsUp, MessageCircle, Send, Plus, X, User, Trash2, Edit2, ShieldCheck } from 'lucide-react';
@@ -243,34 +242,28 @@ const WishCard: React.FC<WishCardProps> = ({
 };
 
 const Community = () => {
-  const { user, isAdmin, addNotification } = useAuth();
-  const [items, setItems] = useState<WishlistItem[]>(MOCK_WISHLIST);
+  const { user, isAdmin, addNotification, wishlist, addWishlistItem, updateWishlistItem, deleteWishlistItem } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<WishlistItem | undefined>(undefined);
 
   const handleVote = (id: string) => {
     if (!user) return;
+    const item = wishlist.find(i => i.id === id);
+    if (!item) return;
 
-    setItems(items.map(item => {
-        if (item.id === id) {
-            const hasVoted = item.votedUserIds.includes(user.id);
-            let newVotedIds;
-            if (hasVoted) {
-                // Remove vote
-                newVotedIds = item.votedUserIds.filter(uid => uid !== user.id);
-            } else {
-                // Add vote
-                newVotedIds = [...item.votedUserIds, user.id];
-            }
-            return { ...item, votedUserIds: newVotedIds };
-        }
-        return item;
-    }));
+    const hasVoted = item.votedUserIds.includes(user.id);
+    let newVotedIds;
+    if (hasVoted) {
+        newVotedIds = item.votedUserIds.filter(uid => uid !== user.id);
+    } else {
+        newVotedIds = [...item.votedUserIds, user.id];
+    }
+    updateWishlistItem(id, { votedUserIds: newVotedIds });
   };
 
   const handleSave = (title: string, description: string, category: string) => {
     if (editingItem) {
-        setItems(items.map(i => i.id === editingItem.id ? { ...i, title, description, category: category as any } : i));
+        updateWishlistItem(editingItem.id, { title, description, category: category as any });
     } else {
         const newItem: WishlistItem = {
             id: Math.random().toString(36).substr(2, 9),
@@ -284,7 +277,7 @@ const Community = () => {
             createdAt: new Date().toISOString(),
             comments: []
         };
-        setItems([newItem, ...items]);
+        addWishlistItem(newItem);
     }
     setIsModalOpen(false);
     setEditingItem(undefined);
@@ -292,7 +285,7 @@ const Community = () => {
 
   const handleDelete = (id: string) => {
       if(window.confirm("Удалить это пожелание?")) {
-          setItems(items.filter(i => i.id !== id));
+          deleteWishlistItem(id);
       }
   };
 
@@ -304,7 +297,8 @@ const Community = () => {
   const handleAddComment = (id: string, text: string) => {
     if (!user) return;
     
-    const targetItem = items.find(i => i.id === id);
+    const targetItem = wishlist.find(i => i.id === id);
+    if(!targetItem) return;
 
     const newComment: Comment = {
       id: Math.random().toString(36).substr(2, 9),
@@ -315,12 +309,10 @@ const Community = () => {
       isAdminResponse: isAdmin // Flag if it's an admin reply
     };
     
-    setItems(items.map(item => 
-       item.id === id ? { ...item, comments: [...item.comments, newComment] } : item
-    ));
+    updateWishlistItem(id, { comments: [...targetItem.comments, newComment] });
 
     // Send Notification to Author if it's an Admin replying
-    if (isAdmin && targetItem && targetItem.authorId && targetItem.authorId !== user.id) {
+    if (isAdmin && targetItem.authorId && targetItem.authorId !== user.id) {
         addNotification(
             targetItem.authorId,
             `Администратор ${user.name} ответил на ваше пожелание "${targetItem.title}"`,
@@ -331,9 +323,10 @@ const Community = () => {
 
   const handleDeleteComment = (itemId: string, commentId: string) => {
     if(window.confirm("Удалить комментарий?")) {
-        setItems(items.map(item => 
-            item.id === itemId ? { ...item, comments: item.comments.filter(c => c.id !== commentId) } : item
-        ));
+        const item = wishlist.find(i => i.id === itemId);
+        if(item) {
+            updateWishlistItem(itemId, { comments: item.comments.filter(c => c.id !== commentId) });
+        }
     }
   };
 
@@ -359,7 +352,7 @@ const Community = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-         {items.map(item => (
+         {wishlist.map(item => (
            <WishCard 
               key={item.id} 
               item={item} 

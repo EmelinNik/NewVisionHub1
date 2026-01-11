@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { MOCK_INVENTORY } from '../mockData';
+import { useAuth } from '../context/AuthContext';
 import { ItemCategory, ItemStatus, OwnerType, InventoryItem } from '../types';
-import { Search, Plus, Battery, BatteryWarning, Save, X, User, HardDrive } from 'lucide-react';
+import { Search, Plus, Battery, BatteryWarning, Save, X, User, HardDrive, Info } from 'lucide-react';
 
 // Default empty item for creation
 const NEW_ITEM: InventoryItem = {
@@ -13,6 +13,7 @@ const NEW_ITEM: InventoryItem = {
   ownerType: OwnerType.STUDIO,
   location: 'Склад',
   status: ItemStatus.AVAILABLE,
+  description: '',
   batteryLevel: 'Full',
   memoryCardStatus: 'Empty',
   history: []
@@ -79,6 +80,18 @@ const InventoryModal = ({
                  placeholder="Например: Sony A7S III"
                />
              </div>
+
+             {/* Description Field (NEW) */}
+             <div>
+               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Описание / Комплектация</label>
+               <textarea
+                 value={formData.description || ''}
+                 onChange={e => handleChange('description', e.target.value)}
+                 className="w-full px-3 py-2 rounded border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm h-16 resize-none"
+                 placeholder="Например: Клетка, ручка, HDMI кабель..."
+               />
+             </div>
+
              <div className="flex gap-4">
                 <div className="flex-1">
                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Серийный номер</label>
@@ -230,7 +243,7 @@ const InventoryModal = ({
 };
 
 const Inventory = () => {
-  const [items, setItems] = useState(MOCK_INVENTORY);
+  const { inventory, addInventoryItem, updateInventoryItem } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -241,10 +254,10 @@ const Inventory = () => {
     if (!updatedItem.id) {
         // Create new
         const newItem = { ...updatedItem, id: Math.random().toString(36).substr(2, 9) };
-        setItems([...items, newItem]);
+        addInventoryItem(newItem);
     } else {
         // Update existing
-        setItems(items.map(i => i.id === updatedItem.id ? updatedItem : i));
+        updateInventoryItem(updatedItem.id, updatedItem);
     }
     setSelectedItem(null);
   };
@@ -253,7 +266,7 @@ const Inventory = () => {
     setSelectedItem({ ...NEW_ITEM });
   };
 
-  const filteredItems = items.filter(item => {
+  const filteredItems = inventory.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           item.serialNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
@@ -349,6 +362,11 @@ const Inventory = () => {
                       <td className="px-6 py-4">
                         <div className="font-medium text-slate-800">{item.name}</div>
                         <div className="text-xs text-slate-400">{item.serialNumber}</div>
+                        {item.description && (
+                           <div className="text-[10px] text-slate-500 mt-1 max-w-[200px] truncate flex items-center gap-1">
+                              <Info size={10} /> {item.description}
+                           </div>
+                        )}
                         
                         <div className="flex gap-2 mt-1">
                             {/* Battery Status */}

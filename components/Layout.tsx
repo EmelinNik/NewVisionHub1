@@ -17,7 +17,8 @@ import {
   Bell,
   Users as UsersIcon,
   AlertTriangle,
-  Save
+  Save,
+  Camera
 } from 'lucide-react';
 import { UserRole, User } from '../types';
 
@@ -102,8 +103,11 @@ const ProfileModal = ({
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div className="flex justify-center mb-4">
-                        <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-orange-500">
+                        <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-orange-500 relative group cursor-pointer">
                              {avatarUrl ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover"/> : <UserIcon size={32} className="text-slate-400"/>}
+                             <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Camera size={20} className="text-white"/>
+                             </div>
                         </div>
                     </div>
                     
@@ -127,7 +131,7 @@ const ProfileModal = ({
                             className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
                             placeholder="https://..."
                         />
-                        <p className="text-[10px] text-slate-400 mt-1">Рекомендуем использовать DiceBear или прямые ссылки на фото.</p>
+                        <p className="text-[10px] text-slate-400 mt-1">Используйте прямую ссылку на изображение.</p>
                     </div>
 
                     <button type="submit" className="w-full bg-orange-500 text-white py-3 rounded-xl font-bold hover:bg-orange-600 transition flex items-center justify-center gap-2">
@@ -206,7 +210,6 @@ const Layout = () => {
                <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center overflow-hidden hover:opacity-90 border-2 border-transparent group-hover:border-white transition-all">
                   {user.avatarUrl ? <img src={user.avatarUrl} alt="avatar" /> : <UserIcon />}
                </div>
-               {/* Note: Unread badge moved to bell icon only */}
             </div>
             
             <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setIsProfileOpen(true)}>
@@ -217,7 +220,7 @@ const Layout = () => {
               </p>
             </div>
 
-            <button onClick={() => setIsNotifOpen(!isNotifOpen)} className="text-slate-400 hover:text-white relative">
+            <button onClick={() => setIsNotifOpen(!isNotifOpen)} className="text-slate-400 hover:text-white relative p-1 rounded hover:bg-slate-700 transition">
                <Bell size={18} />
                {unreadCount > 0 && <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-slate-900"></span>}
             </button>

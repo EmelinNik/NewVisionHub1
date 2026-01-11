@@ -1,8 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Users, Box, AlertCircle, Calendar, Clock, ArrowRight } from 'lucide-react';
-import { MOCK_BOOKINGS, MOCK_INVENTORY, MOCK_REQUESTS } from '../mockData';
-import { BookingType } from '../types';
+import { Activity, Users, Box, AlertCircle, Calendar, Clock, ArrowRight, WifiOff } from 'lucide-react';
+import { BookingType, BookingStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
 
 interface StatCardProps {
@@ -64,12 +63,16 @@ const ScheduleItem: React.FC<ScheduleItemProps> = ({ time, title, user, type, is
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { usersList, isAdmin } = useAuth();
-  const activeBookings = MOCK_BOOKINGS.filter(b => b.status === 'Активно').length;
-  const totalItems = MOCK_INVENTORY.length;
-  const newRequests = MOCK_REQUESTS.filter(r => r.status === 'Новая').length;
+  const { usersList, isAdmin, bookings, inventory, requests, connectionError } = useAuth();
+  
+  const activeBookings = bookings.filter(b => 
+    b.type === BookingType.ROOM && 
+    (b.status === BookingStatus.ACTIVE || b.status === BookingStatus.PLANNED)
+  ).length;
 
-  // Filter Bookings for Today and Tomorrow
+  const totalItems = inventory.length;
+  const newRequests = requests.filter(r => r.status === 'Новая').length;
+
   const today = new Date();
   const tomorrow = new Date();
   tomorrow.setDate(today.getDate() + 1);
@@ -80,14 +83,12 @@ const Dashboard = () => {
              d1.getFullYear() === d2.getFullYear();
   };
 
-  const todayBookings = MOCK_BOOKINGS.filter(b => isSameDay(new Date(b.startTime), today)).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-  const tomorrowBookings = MOCK_BOOKINGS.filter(b => isSameDay(new Date(b.startTime), tomorrow)).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  const todayBookings = bookings.filter(b => isSameDay(new Date(b.startTime), today)).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  const tomorrowBookings = bookings.filter(b => isSameDay(new Date(b.startTime), tomorrow)).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
-  // Helper to generate next dates for clickability
   const getUpcomingDay = (offset: number) => {
     const d = new Date();
     d.setDate(d.getDate() + offset);
-    // Format manually to avoid timezone issues in simple ISO string
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -97,19 +98,16 @@ const Dashboard = () => {
   const getDayName = (offset: number) => {
      const d = new Date();
      d.setDate(d.getDate() + offset);
-     const dayName = d.toLocaleDateString('ru-RU', { weekday: 'short' }); // "пн", "вт"
+     const dayName = d.toLocaleDateString('ru-RU', { weekday: 'short' });
      return dayName.charAt(0).toUpperCase() + dayName.slice(1);
   };
 
-  // Generate week stats based on mock bookings count
   const upcomingWeek = Array.from({ length: 7 }, (_, i) => {
-      const offset = i + 1; // start from tomorrow or day after? Let's show next 7 days including today or starting tomorrow. Let's start from tomorrow + 1 to simulate "week load"
       const dateStr = getUpcomingDay(i);
-      // Count mock bookings for this day (simulated random distribution + existing mocks)
-      const count = MOCK_BOOKINGS.filter(b => b.startTime.startsWith(dateStr)).length + Math.floor(Math.random() * 5); 
+      const count = bookings.filter(b => b.startTime.startsWith(dateStr)).length; 
       return {
           day: getDayName(i),
-          count: count > 0 ? count : Math.floor(Math.random() * 8), // Fill with some dummy data if empty
+          count, 
           date: dateStr
       };
   });
@@ -119,21 +117,29 @@ const Dashboard = () => {
   };
 
   const handleBookingClick = (isoDateString: string, bookingId: string) => {
-    // Navigate to bookings page with the specific date selected AND the booking ID to open it
     const date = new Date(isoDateString);
-    const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+    const dateStr = date.toISOString().split('T')[0];
     navigate(`/bookings?date=${dateStr}&bookingId=${bookingId}`);
   };
 
   return (
     <div className="space-y-6">
+      {connectionError && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-r shadow-sm flex items-center gap-3 animate-pulse">
+           <WifiOff size={24} />
+           <div>
+             <p className="font-bold">Ошибка подключения к базе данных</p>
+             <p className="text-sm">Браузер может блокировать HTTP запросы на HTTPS сайте (Mixed Content). Попробуйте открыть сайт через http:// или проверьте статус сервера.</p>
+           </div>
+        </div>
+      )}
+
       <h2 className="text-2xl font-bold text-slate-800">Обзор студии</h2>
 
-      {/* Stats Grid - Clickable */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           icon={Activity} 
-          label="Активные брони" 
+          label="Брони помещений" 
           value={activeBookings} 
           color="bg-orange-500"
           onClick={() => navigate('/bookings')}
@@ -162,9 +168,7 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Schedule Column (Today & Tomorrow) */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Today Section */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
             <div 
               className="flex items-center justify-between mb-4 cursor-pointer hover:bg-slate-50 p-2 -m-2 rounded-lg transition-colors"
@@ -184,7 +188,7 @@ const Dashboard = () => {
                     key={item.id} 
                     time={new Date(item.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                     title={item.resourceName}
-                    user={item.clientInfo?.name || (item.userId === 'u1' ? 'Алексей Смирнов' : 'Администратор')}
+                    user={item.clientInfo?.name || 'Пользователь'}
                     type={item.type}
                     onClick={() => handleBookingClick(item.startTime, item.id)}
                 />
@@ -194,7 +198,6 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Tomorrow Section */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 opacity-90">
             <div 
               className="flex items-center justify-between mb-4 cursor-pointer hover:bg-slate-50 p-2 -m-2 rounded-lg transition-colors"
@@ -214,7 +217,7 @@ const Dashboard = () => {
                     key={item.id} 
                     time={new Date(item.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                     title={item.resourceName}
-                    user={item.clientInfo?.name || (item.userId === 'u1' ? 'Алексей Смирнов' : 'Администратор')}
+                    user={item.clientInfo?.name || 'Пользователь'}
                     type={item.type}
                     isTomorrow
                     onClick={() => handleBookingClick(item.startTime, item.id)}
@@ -226,7 +229,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* 7 Days Overview Column */}
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-full">
             <h3 className="text-lg font-bold text-slate-800 mb-6">Загрузка на неделю</h3>

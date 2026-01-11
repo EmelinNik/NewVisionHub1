@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth, SUPER_ADMIN_EMAIL } from '../context/AuthContext';
 import { UserRole } from '../types';
-import { ShieldCheck, User as UserIcon, CheckCircle, XCircle, Search } from 'lucide-react';
+import { ShieldCheck, User as UserIcon, CheckCircle, XCircle, Search, KeyRound, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Users = () => {
-  const { usersList, updateUser, isAdmin, user: currentUser } = useAuth();
+  const { usersList, updateUser, deleteUser, isAdmin, user: currentUser, adminUpdatePassword } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = React.useState('');
 
@@ -29,6 +29,24 @@ const Users = () => {
 
   const toggleVerification = (userId: string, currentStatus: boolean | undefined) => {
     updateUser(userId, { isVerified: !currentStatus });
+  };
+
+  const handleChangePassword = (userId: string, userName: string) => {
+      const newPass = prompt(`Введите новый пароль для пользователя ${userName}:`);
+      if (newPass) {
+          if (newPass.length < 6) {
+              alert('Пароль должен быть не менее 6 символов');
+              return;
+          }
+          adminUpdatePassword(userId, newPass);
+          alert('Пароль успешно изменен');
+      }
+  };
+
+  const handleDeleteUser = (userId: string, userName: string) => {
+      if (confirm(`ВНИМАНИЕ: Вы уверены, что хотите удалить пользователя ${userName}? Это действие необратимо.`)) {
+          deleteUser(userId);
+      }
   };
 
   const isSuperAdmin = currentUser?.email === SUPER_ADMIN_EMAIL;
@@ -114,8 +132,28 @@ const Users = () => {
                      </button>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-400">
-                     {/* Add more actions here if needed */}
-                     ID: <span className="font-mono text-xs">{u.id}</span>
+                     <div className="flex items-center gap-2">
+                         <button 
+                           onClick={() => handleChangePassword(u.id, u.name)}
+                           className="p-1.5 text-slate-400 hover:text-orange-500 hover:bg-orange-50 rounded transition-colors"
+                           title="Сменить пароль"
+                         >
+                            <KeyRound size={16} />
+                         </button>
+                         
+                         {/* Cannot delete yourself */}
+                         {u.id !== currentUser?.id && (
+                             <button 
+                               onClick={() => handleDeleteUser(u.id, u.name)}
+                               className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                               title="Удалить пользователя"
+                             >
+                                <Trash2 size={16} />
+                             </button>
+                         )}
+                         
+                         <span className="font-mono text-xs text-slate-300 ml-1">ID: {u.id}</span>
+                     </div>
                   </td>
                 </tr>
               ))}

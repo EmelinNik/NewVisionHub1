@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { MOCK_REQUESTS } from '../mockData';
 import { RequestStatus, RequestTicket } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { AlertCircle, Wrench, Lock, Lightbulb, Plus, X, Save, Trash2 } from 'lucide-react';
@@ -114,8 +113,7 @@ const RequestModal = ({
 };
 
 const Requests = () => {
-  const { user, canEdit } = useAuth();
-  const [requests, setRequests] = useState<RequestTicket[]>(MOCK_REQUESTS);
+  const { user, canEdit, requests, addRequest, updateRequest, deleteRequest } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<Partial<RequestTicket> | null>(null);
 
@@ -132,14 +130,14 @@ const Requests = () => {
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if(window.confirm('Удалить эту заявку?')) {
-        setRequests(requests.filter(r => r.id !== id));
+        deleteRequest(id);
     }
   };
 
   const handleSave = (req: RequestTicket) => {
     if (req.id) {
        // Update existing
-       setRequests(requests.map(r => r.id === req.id ? req : r));
+       updateRequest(req.id, req);
     } else {
        // Create new
        const newReq: RequestTicket = {
@@ -149,7 +147,7 @@ const Requests = () => {
          createdAt: new Date().toISOString(),
          comments: []
        };
-       setRequests([newReq, ...requests]);
+       addRequest(newReq);
     }
     setIsModalOpen(false);
     setSelectedRequest(null);

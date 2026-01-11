@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MOCK_BOOKINGS, MOCK_INVENTORY } from '../mockData';
+import { useAuth } from '../context/AuthContext';
 import { Booking, BookingStatus, BookingType, ItemStatus, ClientInfo } from '../types';
-import { Calendar as CalendarIcon, Clock, X, ChevronLeft, ChevronRight, Edit2, Trash2, Plus, Users, Box, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, X, ChevronLeft, ChevronRight, Edit2, Trash2, Plus, Users, Box, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 
 // --- Types & Helpers ---
 const DAYS_OF_WEEK = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -31,18 +31,21 @@ const BookingModal = ({
   onClose, 
   onSave, 
   booking, 
-  selectedDate 
+  selectedDate,
+  inventoryItems // Passed from parent
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   onSave: (b: Partial<Booking>) => void;
   booking?: Booking;
   selectedDate: Date;
+  inventoryItems: any[];
 }) => {
   const [resourceName, setResourceName] = useState('');
   const [startTime, setStartTime] = useState('10:00');
   const [endTime, setEndTime] = useState('14:00');
   const [type, setType] = useState<BookingType>(BookingType.ROOM);
+  const [comment, setComment] = useState('');
   
   // Client Info State
   const [clientName, setClientName] = useState('');
@@ -57,6 +60,7 @@ const BookingModal = ({
         setStartTime(new Date(booking.startTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}));
         setEndTime(new Date(booking.endTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}));
         setType(booking.type);
+        setComment(booking.comment || '');
         // Client info
         setClientName(booking.clientInfo?.name || '');
         setClientPhone(booking.clientInfo?.phone || '');
@@ -67,6 +71,7 @@ const BookingModal = ({
         setStartTime('10:00');
         setEndTime('14:00');
         setType(BookingType.ROOM);
+        setComment('');
         setClientName('');
         setClientPhone('');
         setClientVk('');
@@ -92,7 +97,8 @@ const BookingModal = ({
       endTime: `${selectedDate.toISOString().split('T')[0]}T${endTime}:00`,
       status: BookingStatus.PLANNED,
       userId: booking?.userId || 'currentUser', // Keep existing or mock
-      clientInfo
+      clientInfo,
+      comment
     });
   };
 
@@ -201,7 +207,7 @@ const BookingModal = ({
                 required
               >
                  <option value="">Выберите оборудование</option>
-                 {MOCK_INVENTORY.map(item => (
+                 {inventoryItems.map(item => (
                    <option key={item.id} value={item.name}>{item.name}</option>
                  ))}
               </select>
@@ -231,6 +237,17 @@ const BookingModal = ({
             </div>
           </div>
 
+          {/* COMMENT FIELD (NEW) */}
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Комментарий</label>
+            <textarea 
+              value={comment}
+              onChange={e => setComment(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500 h-20 resize-none text-sm"
+              placeholder="Дополнительные детали..."
+            />
+          </div>
+
           <button type="submit" className="w-full bg-orange-500 text-white py-3 rounded-lg font-bold hover:bg-orange-600 transition mt-4">
             Сохранить
           </button>
@@ -244,9 +261,10 @@ const BookingModal = ({
 const Bookings = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { bookings, addBooking, updateBooking, deleteBooking, inventory } = useAuth(); // Use shared state
+  
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | undefined>(undefined);
 
@@ -281,7 +299,7 @@ const Bookings = () => {
             }
         }
     }
-  }, [location.search, bookings]); // Added bookings to deps in case they load async later
+  }, [location.search, bookings]); 
 
   // Calendar Navigation
   const nextMonth = () => {
@@ -296,10 +314,10 @@ const Bookings = () => {
 
   // CRUD Operations
   const handleSaveBooking = (newBooking: Partial<Booking>) => {
-    if (editingBooking) {
-      setBookings(bookings.map(b => b.id === editingBooking.id ? { ...b, ...newBooking } as Booking : b));
+    if (editingBooking && editingBooking.id) {
+      updateBooking(editingBooking.id, newBooking);
     } else {
-      setBookings([...bookings, newBooking as Booking]);
+      addBooking(newBooking as Booking);
     }
     setIsModalOpen(false);
     setEditingBooking(undefined);
@@ -325,9 +343,10 @@ const Bookings = () => {
       }
   };
 
-  const handleCancel = (id: string) => {
-    if (window.confirm('Вы уверены, что хотите отменить эту бронь?')) {
-       setBookings(bookings.map(b => b.id === id ? { ...b, status: BookingStatus.CANCELLED } : b));
+  const handleDeleteAction = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (window.confirm('Вы уверены, что хотите удалить эту бронь?')) {
+       deleteBooking(id);
     }
   };
 
@@ -457,8 +476,8 @@ const Bookings = () => {
                     {booking.status}
                   </span>
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                     <button onClick={() => handleEdit(booking)} className="p-1 text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
-                     <button onClick={() => handleCancel(booking.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                     <button onClick={(e) => { e.stopPropagation(); handleEdit(booking); }} className="p-1 text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
+                     <button onClick={(e) => handleDeleteAction(e, booking.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
                   </div>
                 </div>
                 
@@ -476,6 +495,12 @@ const Bookings = () => {
                      <Users size={12} />
                      {booking.clientInfo?.name ? booking.clientInfo.name : 'Пользователь'}
                    </div>
+                   {booking.comment && (
+                       <div className="mt-2 text-xs text-slate-600 bg-slate-50 p-2 rounded flex items-start gap-1">
+                          <MessageSquare size={12} className="mt-0.5 shrink-0" />
+                          {booking.comment}
+                       </div>
+                   )}
                 </div>
               </div>
             ))}
@@ -489,6 +514,7 @@ const Bookings = () => {
         onSave={handleSaveBooking}
         booking={editingBooking}
         selectedDate={selectedDate}
+        inventoryItems={inventory}
       />
     </div>
   );

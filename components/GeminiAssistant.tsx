@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, X, Send, Bot } from 'lucide-react';
 import { askGeminiAssistant } from '../services/geminiService';
-import { MOCK_INVENTORY, MOCK_EVENTS } from '../mockData';
+import { useAuth } from '../context/AuthContext';
 import ReactMarkdown from 'react-markdown';
 
 const GeminiAssistant = () => {
+  const { inventory, events, bookings } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<{role: 'user' | 'ai', text: string}[]>([
@@ -27,10 +28,12 @@ const GeminiAssistant = () => {
     setInput('');
     setLoading(true);
 
-    // Prepare context from app state
+    // Prepare context from REAL app state
     const context = `
-      Инвентарь (примеры): ${MOCK_INVENTORY.map(i => `${i.name} (${i.status})`).join(', ')}.
-      Ближайшие события: ${MOCK_EVENTS.map(e => `${e.title} в ${e.date}`).join(', ')}.
+      АКТУАЛЬНЫЕ ДАННЫЕ СТУДИИ:
+      Инвентарь: ${inventory.map(i => `${i.name} (Статус: ${i.status}, Локация: ${i.location})`).join(', ')}.
+      Бронирования: ${bookings.map(b => `${b.resourceName} забронировано с ${b.startTime} до ${b.endTime}`).join('; ')}.
+      Ближайшие события: ${events.map(e => `${e.title} в ${e.date} (Локация: ${e.location})`).join(', ')}.
     `;
 
     const response = await askGeminiAssistant(userMessage, context);
