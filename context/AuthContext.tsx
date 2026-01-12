@@ -157,7 +157,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const confirmEmail = async (code: string) => {
-    if (!pendingUser || pendingUser.code !== code) return false;
+    // Trim code to prevent copy-paste errors with spaces
+    const cleanCode = code.trim();
+    if (!pendingUser || pendingUser.code !== cleanCode) return false;
     
     const { data, error } = await supabase.auth.signUp({
       email: pendingUser.email,
@@ -167,8 +169,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     if (error || !data.user) return false;
     
-    // Create profile manually if trigger didn't fire
-    await supabase.from('profiles').insert({
+    // Create profile manually to ensure DB consistency
+    await supabase.from('profiles').upsert({
         id: data.user.id,
         email: pendingUser.email,
         full_name: pendingUser.name,
