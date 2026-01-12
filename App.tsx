@@ -10,7 +10,7 @@ import Community from './pages/Community';
 import Events from './pages/Events';
 import MyCalendar from './pages/MyCalendar';
 import Users from './pages/Users';
-import { Send, Smartphone, ArrowRight, CheckCircle2, ChevronLeft, Info } from 'lucide-react';
+import { Send, Smartphone, ArrowRight, CheckCircle2, ChevronLeft, Info, HelpCircle } from 'lucide-react';
 
 const AuthPage = () => {
   const { login, initiateRegistration, confirmEmail, pendingUser } = useAuth();
@@ -34,6 +34,7 @@ const AuthPage = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     setError('');
     const generatedCode = initiateRegistration(name, email, password, telegramId);
     
@@ -50,7 +51,9 @@ const AuthPage = () => {
         });
         setViewState('code');
     } catch (err) {
-        setError('Ошибка связи с сервером');
+        setError('Ошибка связи с Telegram-ботом');
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -59,7 +62,7 @@ const AuthPage = () => {
     setIsLoading(true);
     const success = await confirmEmail(code);
     setIsLoading(false);
-    if (!success) setError('Неверный код подтверждения');
+    if (!success) setError('Неверный код подтверждения. Попробуйте ввести вручную без пробелов.');
   };
 
   if (viewState === 'login') {
@@ -76,7 +79,7 @@ const AuthPage = () => {
               {isLoading ? 'Загрузка...' : 'Войти'}
             </button>
           </form>
-          <button onClick={() => setViewState('register')} className="mt-6 text-sm text-slate-500 hover:text-orange-500">Нет аккаунта? Зарегистрироваться</button>
+          <button onClick={() => setViewState('register')} className="mt-6 text-sm text-slate-500 hover:text-orange-500 transition-colors">Нет аккаунта? Зарегистрироваться</button>
         </div>
       </div>
     );
@@ -87,27 +90,53 @@ const AuthPage = () => {
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
         <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-3xl flex flex-col md:flex-row gap-8">
           <div className="md:w-1/2 bg-slate-50 p-6 rounded-xl border border-slate-200">
-            <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Send className="text-blue-500" size={20}/> Шаг 1: Бот</h3>
-            <p className="text-sm text-slate-600 mb-4">Откройте нашего бота и нажмите старт, чтобы получить уведомление с кодом.</p>
-            <a href="https://t.me/blogerhub37bot" target="_blank" className="block w-full text-center bg-blue-500 text-white py-2 rounded-lg font-bold hover:bg-blue-600 transition mb-6">Открыть @blogerhub37bot</a>
+            <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800"><Send className="text-blue-500" size={20}/> Шаг 1: Подготовка</h3>
+            <p className="text-sm text-slate-600 mb-6">Чтобы регистрация прошла успешно, выполните следующие действия:</p>
             
-            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-                <p className="text-xs text-blue-700 flex items-start gap-2">
-                    <Info size={16} className="shrink-0 mt-0.5" />
-                    Для регистрации нам нужен ваш Telegram ID. Его можно узнать в боте <a href="https://t.me/userinfobot" target="_blank" className="underline font-bold">@userinfobot</a>
-                </p>
+            <div className="space-y-4">
+                <div className="bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
+                    <p className="text-xs font-bold text-slate-400 uppercase mb-2">Получение ID</p>
+                    <p className="text-xs text-slate-600 mb-2">Узнайте свой ID в боте:</p>
+                    <a href="https://t.me/userinfobot" target="_blank" className="inline-flex items-center gap-2 text-blue-600 font-bold hover:underline text-sm">
+                        @userinfobot <ArrowRight size={14} />
+                    </a>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
+                    <p className="text-xs font-bold text-slate-400 uppercase mb-2">Связь с ботом</p>
+                    <p className="text-xs text-slate-600 mb-2">Нажмите /start в нашем боте:</p>
+                    <a href="https://t.me/blogerhub37bot" target="_blank" className="inline-flex items-center gap-2 text-orange-600 font-bold hover:underline text-sm">
+                        @blogerhub37bot <ArrowRight size={14} />
+                    </a>
+                </div>
             </div>
           </div>
+          
           <div className="md:w-1/2">
-            <h3 className="font-bold text-lg mb-4">Шаг 2: Данные</h3>
+            <h3 className="font-bold text-lg mb-4 text-slate-800">Шаг 2: Ваши данные</h3>
             <form onSubmit={handleRegister} className="space-y-3">
-              <input type="text" placeholder="ФИО" className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none focus:ring-1 focus:ring-orange-500" value={name} onChange={e => setName(e.target.value)} required />
-              <input type="email" placeholder="Email" className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none focus:ring-1 focus:ring-orange-500" value={email} onChange={e => setEmail(e.target.value)} required />
-              <input type="text" placeholder="Telegram ID (числа)" className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none focus:ring-1 focus:ring-orange-500" value={telegramId} onChange={e => setTelegramId(e.target.value)} required />
-              <input type="password" placeholder="Пароль" className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none focus:ring-1 focus:ring-orange-500" value={password} onChange={e => setPassword(e.target.value)} required />
-              <button type="submit" className="w-full bg-orange-500 text-white py-3 rounded-lg font-bold hover:bg-orange-600 transition">Получить код</button>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">ФИО</label>
+                <input type="text" placeholder="Имя Фамилия" className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500" value={name} onChange={e => setName(e.target.value)} required />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Email</label>
+                <input type="email" placeholder="example@mail.com" className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500" value={email} onChange={e => setEmail(e.target.value)} required />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Telegram ID</label>
+                <input type="text" placeholder="Только цифры (из @userinfobot)" className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500" value={telegramId} onChange={e => setTelegramId(e.target.value)} required />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Пароль</label>
+                <input type="password" placeholder="Минимум 6 символов" className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
+              </div>
+              
+              <button type="submit" disabled={isLoading} className="w-full bg-orange-500 text-white py-3 rounded-lg font-bold hover:bg-orange-600 transition shadow-md shadow-orange-100 mt-4">
+                {isLoading ? 'Отправка...' : 'Зарегистрироваться'}
+              </button>
             </form>
-            <button onClick={() => setViewState('login')} className="mt-4 text-sm text-slate-400 flex items-center gap-1 hover:text-orange-500 transition"><ChevronLeft size={16}/> Назад к входу</button>
+            <button onClick={() => setViewState('login')} className="mt-4 text-sm text-slate-400 flex items-center gap-1 hover:text-orange-500 transition-colors mx-auto"><ChevronLeft size={16}/> Вернуться к входу</button>
           </div>
         </div>
       </div>
@@ -117,17 +146,20 @@ const AuthPage = () => {
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
-        <h2 className="text-2xl font-bold mb-2">Проверка кода</h2>
-        <p className="text-sm text-slate-500 mb-6">Введите 6-значный код из Telegram</p>
+        <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Smartphone className="text-orange-500" size={32} />
+        </div>
+        <h2 className="text-2xl font-bold mb-2 text-slate-800">Проверка кода</h2>
+        <p className="text-sm text-slate-500 mb-6">Введите 6-значный код, присланный ботом <span className="font-bold text-orange-600">@blogerhub37bot</span></p>
         <form onSubmit={handleVerify} className="space-y-4">
-          <input type="text" maxLength={6} placeholder="000000" className="w-full px-4 py-4 rounded-xl border-2 border-slate-200 text-center text-3xl tracking-widest font-mono focus:border-orange-500 outline-none" value={code} onChange={e => setCode(e.target.value)} required />
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button type="submit" disabled={isLoading} className="w-full bg-orange-500 text-white py-3 rounded-lg font-bold hover:bg-orange-600 transition">
+          <input type="text" maxLength={6} placeholder="000000" className="w-full px-4 py-4 rounded-xl border-2 border-slate-200 text-center text-4xl tracking-widest font-mono focus:border-orange-500 outline-none text-slate-800" value={code} onChange={e => setCode(e.target.value)} required />
+          {error && <p className="text-red-500 text-xs font-medium bg-red-50 p-2 rounded">{error}</p>}
+          <button type="submit" disabled={isLoading} className="w-full bg-orange-500 text-white py-4 rounded-xl font-bold hover:bg-orange-600 transition-all text-lg shadow-lg shadow-orange-200">
             {isLoading ? 'Проверка...' : 'Подтвердить'}
           </button>
         </form>
-        <button onClick={() => setViewState('register')} className="mt-6 text-sm text-slate-400 hover:text-orange-500 transition flex items-center justify-center gap-1 mx-auto">
-            <ChevronLeft size={16}/> Изменить данные
+        <button onClick={() => setViewState('register')} className="mt-6 text-sm text-slate-400 hover:text-orange-500 transition-colors flex items-center justify-center gap-1 mx-auto">
+            <ChevronLeft size={16}/> Изменить данные регистрации
         </button>
       </div>
     </div>

@@ -20,7 +20,7 @@ export const uploadFileToS3 = async (file: File): Promise<string> => {
       Key: filename,
       Body: file,
       ContentType: file.type,
-      ACL: "public-read",
+      ACL: "public-read", // Обязательно для публичного доступа
     });
 
     await s3Client.send(command);

@@ -63,6 +63,7 @@ const mapProfileToUser = (p: any): User => ({
   telegramId: p.telegram_id
 });
 
+// Mapping helpers...
 const mapTask = (t: any): UserTask => ({ id: t.id, userId: t.user_id, title: t.title, description: t.description, date: t.date, time: t.time, isCompleted: t.is_completed, type: t.type, assignedBy: t.assigned_by });
 const mapBooking = (b: any): Booking => ({ id: b.id, userId: b.user_id, resourceId: b.resource_id, resourceName: b.resource_name, type: b.type, startTime: b.start_time, endTime: b.end_time, status: b.status, clientInfo: b.client_info, comment: b.comment });
 const mapInventory = (i: any): InventoryItem => ({ id: i.id, name: i.name, category: i.category, serialNumber: i.serial_number, quantity: i.quantity, ownerType: i.owner_type, ownerName: i.owner_name, location: i.location, status: i.status, description: i.description, batteryLevel: i.battery_level, memoryCardStatus: i.memory_card_status, renter: i.renter, history: [] });
@@ -86,10 +87,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await fetchUserProfile(session.user.id);
-        await fetchData();
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await fetchUserProfile(session.user.id);
+          await fetchData();
+        }
+      } catch (e) {
+        console.error("Auth init error:", e);
       }
     };
     initAuth();
@@ -157,9 +162,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const confirmEmail = async (code: string) => {
-    // Trim code to prevent copy-paste errors with spaces
-    const cleanCode = code.trim();
-    if (!pendingUser || pendingUser.code !== cleanCode) return false;
+    // Жесткая нормализация кода для исключения ошибок копирования
+    const cleanInputCode = code.trim().replace(/[^0-9]/g, '');
+    const cleanStoredCode = String(pendingUser?.code || '').trim().replace(/[^0-9]/g, '');
+
+    if (!pendingUser || cleanStoredCode !== cleanInputCode) return false;
     
     const { data, error } = await supabase.auth.signUp({
       email: pendingUser.email,
@@ -169,7 +176,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     if (error || !data.user) return false;
     
-    // Create profile manually to ensure DB consistency
+    // Ручное создание профиля для гарантии синхронизации
     await supabase.from('profiles').upsert({
         id: data.user.id,
         email: pendingUser.email,
